@@ -8,12 +8,27 @@ WEBHOOK_URL=""
 VERBOSE=false
 SOURCE_DIR=""
 BACKUP_DIR=""
+LOG_FILE=""
+
+log() {
+    local level="$1"
+    local message="$2"
+    local timestamp
+
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    printf '%s [%s] %s\n' "$timestamp" "$level" "$message" >> "$LOG_FILE"
+
+    if [[ "$VERBOSE" == true ]]; then
+        printf '%s [%s] %s\n' "$timestamp" "$level" "$message"
+    fi
+}
 
 usage() {
     cat <<EOF
 Usage: $PROGRAM_NAME [options]
 
-Backup a directory into a timestamped compressed archive
+Backup a directory into a timestamped compressed backup.
 
 Options:
     -s SOURCE_DIR  Directory to back up
@@ -21,7 +36,7 @@ Options:
     -r RETENTION   Number of backups to keep (default: 7)
     -w WEBHOOK_URL Webhook URL for failure alerts
     -v             Enable verbose output
-    -h             Show this help message   
+    -h             Show this help message
 
 Example:
     $PROGRAM_NAME -s /home/user/documents -d /backups
@@ -63,7 +78,7 @@ while getopts ":s:d:r:w:vh" opt; do
     esac
 done
 
-#validation required options
+# Validate required options
 if [[ -z "$SOURCE_DIR" ]]; then
     echo "Error: Source directory is required, use -s." >&2
     exit 1
@@ -74,7 +89,7 @@ if [[ -z "$BACKUP_DIR" ]]; then
     exit 1
 fi
 
-# validate source directory
+# Validate source directory
 if [[ ! -d "$SOURCE_DIR" ]]; then
     echo "Error: Source directory does not exist: $SOURCE_DIR" >&2
     exit 1
@@ -85,26 +100,29 @@ if [[ ! -r "$SOURCE_DIR" ]]; then
     exit 1
 fi
 
-# validate retention
+# Validate retention
 if ! [[ "$RETENTION" =~ ^[1-9][0-9]*$ ]]; then
     echo "Error: Retention must be a positive integer: $RETENTION" >&2
     exit 1
 fi
 
-#create backup directory if it doesn't exist
+# Create backup directory if it does not exist
 if [[ ! -d "$BACKUP_DIR" ]]; then
     mkdir -p "$BACKUP_DIR"
 fi
 
-#validate backup directory is writable
+# Set log file
+LOG_FILE="${BACKUP_DIR}/rebase-backup.log"
+
+# Validate backup directory is writable
 if [[ ! -w "$BACKUP_DIR" ]]; then
     echo "Error: Backup directory is not writable: $BACKUP_DIR" >&2
     exit 1
 fi
 
-#create timestamped backup filename
+# Create timestamped backup filename
 TIMESTAMP=$(date '+%Y-%m-%d-%H%M%S')
-ARCHIVE_NAME="backup-$TIMESTAMP.tar.gz"
+ARCHIVE_NAME="backup-${TIMESTAMP}.tar.gz"
 ARCHIVE_PATH="${BACKUP_DIR}/${ARCHIVE_NAME}"
 
 # Get source directory components
@@ -112,12 +130,8 @@ SOURCE_PARENT=$(dirname "$SOURCE_DIR")
 SOURCE_NAME=$(basename "$SOURCE_DIR")
 
 # Create compressed backup
-if [[ "$VERBOSE" = true ]]; then
-    echo "Creating backup: $ARCHIVE_PATH"
-fi
+log "INFO" "Creating backup: $ARCHIVE_PATH"
 
 tar -czf "$ARCHIVE_PATH" -C "$SOURCE_PARENT" "$SOURCE_NAME"
 
-if [[ "$VERBOSE" == true ]]; then
-    echo "Backup created successfully: $ARCHIVE_PATH"
-fi
+log "INFO" "Backup created successfully: $ARCHIVE_PATH"
