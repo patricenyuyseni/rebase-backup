@@ -101,3 +101,23 @@ if [[ ! -w "$BACKUP_DIR" ]]; then
     echo "Error: Backup directory is not writable: $BACKUP_DIR" >&2
     exit 1
 fi
+
+#create timestamped backup filename
+TIMESTAMP=$(date '+%Y-%m-%d-%H%M%S')
+ARCHIVE_NAME="backup-$TIMESTAMP.tar.gz"
+ARCHIVE_PATH="${BACKUP_DIR}/${ARCHIVE_NAME}"
+
+# Get source directory components
+SOURCE_PARENT=$(dirname "$SOURCE_DIR")
+SOURCE_NAME=$(basename "$SOURCE_DIR")
+
+# Create compressed backup
+if [[ "$VERBOSE" = true ]]; then
+    echo "Creating backup: $ARCHIVE_PATH"
+fi
+
+tar -czf "$ARCHIVE_PATH" -C "$SOURCE_PARENT" "$SOURCE_NAME"
+
+if [[ "$VERBOSE" == true ]]; then
+    echo "Backup created successfully: $ARCHIVE_PATH"
+fi
