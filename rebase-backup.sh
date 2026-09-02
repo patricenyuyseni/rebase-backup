@@ -135,3 +135,19 @@ log "INFO" "Creating backup: $ARCHIVE_PATH"
 tar -czf "$ARCHIVE_PATH" -C "$SOURCE_PARENT" "$SOURCE_NAME"
 
 log "INFO" "Backup created successfully: $ARCHIVE_PATH"
+
+# Apply backup retention
+shopt -s nullglob
+backups=("$BACKUP_DIR"/backup-*.tar.gz)
+shopt -u nullglob
+
+# Sort backups from newest to oldest
+mapfile -t backups < <(printf '%s\n' "${backups[@]}" | sort -r)
+
+# Keep only the newest RETENTION backups
+if (( ${#backups[@]} > RETENTION )); then
+    for ((i=RETENTION; i<${#backups[@]}; i++)); do
+        rm -- "${backups[i]}"
+        log "INFO" "Removed old backup: ${backups[i]}"
+    done
+fi
