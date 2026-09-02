@@ -62,3 +62,42 @@ while getopts ":s:d:r:w:vh" opt; do
             ;;
     esac
 done
+
+#validation required options
+if [[ -z "$SOURCE_DIR" ]]; then
+    echo "Error: Source directory is required, use -s." >&2
+    exit 1
+fi
+
+if [[ -z "$BACKUP_DIR" ]]; then
+    echo "Error: Backup directory is required, use -d." >&2
+    exit 1
+fi
+
+# validate source directory
+if [[ ! -d "$SOURCE_DIR" ]]; then
+    echo "Error: Source directory does not exist: $SOURCE_DIR" >&2
+    exit 1
+fi
+
+if [[ ! -r "$SOURCE_DIR" ]]; then
+    echo "Error: Source directory is not readable: $SOURCE_DIR" >&2
+    exit 1
+fi
+
+# validate retention
+if ! [[ "$RETENTION" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: Retention must be a positive integer: $RETENTION" >&2
+    exit 1
+fi
+
+#create backup directory if it doesn't exist
+if [[ ! -d "$BACKUP_DIR" ]]; then
+    mkdir -p "$BACKUP_DIR"
+fi
+
+#validate backup directory is writable
+if [[ ! -w "$BACKUP_DIR" ]]; then
+    echo "Error: Backup directory is not writable: $BACKUP_DIR" >&2
+    exit 1
+fi
