@@ -9,6 +9,7 @@ VERBOSE=false
 SOURCE_DIR=""
 BACKUP_DIR=""
 LOG_FILE=""
+TMP_DIR=""
 
 log() {
     local level="$1"
@@ -23,6 +24,14 @@ log() {
         printf '%s [%s] %s\n' "$timestamp" "$level" "$message"
     fi
 }
+
+cleanup() {
+    if [[ -n "$TMP_DIR" && -d "$TMP_DIR" ]]; then
+        rm -rf -- "$TMP_DIR"
+    fi
+}
+
+trap cleanup EXIT
 
 usage() {
     cat <<EOF
@@ -120,19 +129,26 @@ if [[ ! -w "$BACKUP_DIR" ]]; then
     exit 1
 fi
 
+# Create temporary directory
+TMP_DIR=$(mktemp -d)
+
 # Create timestamped backup filename
 TIMESTAMP=$(date '+%Y-%m-%d-%H%M%S')
 ARCHIVE_NAME="backup-${TIMESTAMP}.tar.gz"
 ARCHIVE_PATH="${BACKUP_DIR}/${ARCHIVE_NAME}"
+TEMP_ARCHIVE="${TMP_DIR}/${ARCHIVE_NAME}"
 
 # Get source directory components
 SOURCE_PARENT=$(dirname "$SOURCE_DIR")
 SOURCE_NAME=$(basename "$SOURCE_DIR")
 
-# Create compressed backup
+# Create compressed backup in temporary directory
 log "INFO" "Creating backup: $ARCHIVE_PATH"
 
-tar -czf "$ARCHIVE_PATH" -C "$SOURCE_PARENT" "$SOURCE_NAME"
+tar -czf "$TEMP_ARCHIVE" -C "$SOURCE_PARENT" "$SOURCE_NAME"
+
+# Move completed backup into backup directory
+mv -- "$TEMP_ARCHIVE" "$ARCHIVE_PATH"
 
 log "INFO" "Backup created successfully: $ARCHIVE_PATH"
 
