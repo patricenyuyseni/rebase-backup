@@ -195,6 +195,12 @@ ARCHIVE_NAME="backup-${TIMESTAMP}.tar.gz"
 ARCHIVE_PATH="${BACKUP_DIR}/${ARCHIVE_NAME}"
 TEMP_ARCHIVE="${TMP_DIR}/${ARCHIVE_NAME}"
 
+# Prevent overwriting an existing backup
+if [[ -e "$ARCHIVE_PATH" ]]; then
+    log "WARN" "Backup already exists, skipping: $ARCHIVE_PATH"
+    exit 0
+fi
+
 # Get source directory components
 SOURCE_PARENT=$(dirname "$SOURCE_DIR")
 SOURCE_NAME=$(basename "$SOURCE_DIR")
