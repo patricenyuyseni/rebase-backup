@@ -20,7 +20,10 @@ log() {
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
     if [[ -n "$LOG_FILE" ]]; then
-        printf '%s [%s] %s\n' "$timestamp" "$level" "$message" >> "$LOG_FILE"
+        if ! printf '%s [%s] %s\n' "$timestamp" "$level" "$message" >> "$LOG_FILE"; then
+            printf '%s [WARN] Unable to write to log file: %s\n' \
+                "$timestamp" "$LOG_FILE" >&2
+        fi
     fi
 
     if [[ "$VERBOSE" == true ]]; then
@@ -48,16 +51,18 @@ send_alert() {
 
 fail() {
     local message="$1"
+    local timestamp
+
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
     if [[ -n "$LOG_FILE" ]]; then
         log "ERROR" "$message"
-    else
-        printf '%s [ERROR] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$message" >&2
     fi
+
+    printf '%s [ERROR] %s\n' "$timestamp" "$message" >&2
 
     send_alert "$message"
 
-    printf 'Error: %s\n' "$message" >&2
     exit 1
 }
 
@@ -175,16 +180,18 @@ fi
 
 # Create backup directory if it does not exist
 if [[ ! -d "$BACKUP_DIR" ]]; then
-    mkdir -p "$BACKUP_DIR"
+    if ! mkdir -p -- "$BACKUP_DIR"; then
+        fail "Unable to create backup directory: $BACKUP_DIR"
+    fi
+fi
+
+# Validate backup directory is writable before setting the log file
+if [[ ! -w "$BACKUP_DIR" ]]; then
+    fail "Backup directory is not writable: $BACKUP_DIR"
 fi
 
 # Set log file
 LOG_FILE="${BACKUP_DIR}/rebase-backup.log"
-
-# Validate backup directory is writable
-if [[ ! -w "$BACKUP_DIR" ]]; then
-    fail "Backup directory is not writable: $BACKUP_DIR"
-fi
 
 # Create temporary directory
 TMP_DIR=$(mktemp -d)
