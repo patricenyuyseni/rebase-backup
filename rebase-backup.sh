@@ -33,14 +33,18 @@ log() {
 
 send_alert() {
     local message="$1"
+    local payload
 
     if [[ -n "$WEBHOOK_URL" && "$ALERT_SENT" == false ]]; then
         ALERT_SENT=true
 
+        payload=$(printf '%s' "$message" | jq -Rs \
+            '{text: ("rebase-backup failed: " + .)}')
+
         if ! curl -fsS \
             -X POST \
             -H "Content-Type: application/json" \
-            -d "{\"text\":\"rebase-backup failed: ${message}\"}" \
+            -d "$payload" \
             "$WEBHOOK_URL" \
             >/dev/null; then
 
@@ -142,7 +146,7 @@ while getopts ":s:d:r:w:vh" opt; do
     esac
 done
 
-# Validate webhook URL and curl first
+# Validate webhook URL and curl
 if [[ -n "$WEBHOOK_URL" ]]; then
     if ! [[ "$WEBHOOK_URL" =~ ^https?://[^[:space:]]+$ ]]; then
         echo "Error: Webhook URL must start with http:// or https://." >&2
@@ -151,6 +155,11 @@ if [[ -n "$WEBHOOK_URL" ]]; then
 
     if ! command -v curl >/dev/null 2>&1; then
         echo "Error: curl is required when using a webhook URL." >&2
+        exit 1
+    fi
+
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "Error: jq is required when using a webhook URL." >&2
         exit 1
     fi
 fi
